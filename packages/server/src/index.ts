@@ -1,9 +1,10 @@
 import express from 'express';
-import mongoose from 'mongoose';
+import { Pool } from 'pg';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import type { Request, Response, NextFunction } from 'express';
 
 dotenv.config();
 
@@ -22,18 +23,38 @@ app.use(rateLimit({
 app.use(express.json());
 
 // Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/match3')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Could not connect to MongoDB', err));
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'match3',
+  password: process.env.DB_PASSWORD || 'postgres',
+  port: parseInt(process.env.DB_PORT || '5432'),
+});
+
+pool.on('connect', () => {
+  console.log('Connected to PostgreSQL');
+});
+
+pool.on('error', (err) => {
+  console.error('Connection to PostgreSQL failed', err);
+});
 
 // Routes would go here
+
+// Import routes
+import userRoutes from './routes/userRoutes';
+import gameDataRoutes from './routes/gameDataRoutes';
+
+// Use routes
+app.use('/api/users', userRoutes);
+app.use('/api/game-data', gameDataRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Match-3 Game Server API' });
 });
 
 // Error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });

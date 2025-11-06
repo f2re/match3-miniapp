@@ -149,7 +149,7 @@ match3-miniapp/
 - **Phaser 3**: For game rendering and mechanics
 - **Vite**: For fast development and build process
 - **Node.js + Express**: For backend API
-- **MongoDB + Mongoose**: For data persistence
+- **PostgreSQL + Knex.js**: For data persistence
 - **JWT**: For authentication
 - **Zustand**: For state management
 - **Framer Motion**: For UI animations
@@ -159,7 +159,7 @@ match3-miniapp/
 ### System Requirements
 - **Node.js**: Version 18.0.0 or higher
 - **npm**: Version 8.0.0 or higher
-- **MongoDB**: Version 4.4 or higher (local installation or cloud instance)
+- **PostgreSQL**: Version 12 or higher (local installation or cloud instance)
 
 ### Development Environment
 - **OS**: macOS, Linux, or Windows
@@ -179,8 +179,8 @@ match3-miniapp/
   - Node.js 18+
   - Express 4+
   - TypeScript 5+
-  - MongoDB driver
-  - Mongoose
+  - PostgreSQL driver (pg)
+  - Knex.js
   - JSON Web Tokens
   - CORS
   - Helmet
@@ -194,7 +194,7 @@ match3-miniapp/
 ### Deployment Requirements
 - **Client Hosting**: Static file hosting service (Vercel, Netlify, etc.)
 - **Server Hosting**: Node.js runtime environment
-- **Database**: MongoDB-compatible database service
+- **Database**: PostgreSQL database service
 - **Environment Variables**: Properly configured environment variables for production
 
 ## Limitations
@@ -222,7 +222,7 @@ match3-miniapp/
 - **Data Privacy**: Game state passed via URL or headers could potentially be intercepted
 
 ### Scalability Limitations
-- **Database Performance**: Simple MongoDB setup may need optimization for large user bases
+- **Database Performance**: PostgreSQL setup may need optimization for large user bases
 - **Concurrent Users**: Server may need load balancing for high-traffic scenarios
 - **Asset Delivery**: Static asset optimization needed for global distribution
 

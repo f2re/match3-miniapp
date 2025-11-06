@@ -85,8 +85,8 @@
 - [Node.js](https://nodejs.org/) - JavaScript runtime
 - [Express](https://expressjs.com/) - Web framework
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe server code
-- [MongoDB](https://www.mongodb.com/) - NoSQL database
-- [Mongoose](https://mongoosejs.com/) - ODM for MongoDB
+- [PostgreSQL](https://www.postgresql.org/) - Relational database
+- [Knex.js](https://knexjs.org/) - SQL query builder
 - [JSON Web Tokens](https://jwt.io/) - Authentication
 - [Helmet](https://helmetjs.github.io/) - Security middleware
 - [Express Rate Limit](https://github.com/nfriedly/express-rate-limit) - Rate limiting
@@ -97,7 +97,7 @@
 
 - [Node.js](https://nodejs.org/) (version 18 or higher)
 - [npm](https://www.npmjs.com/) (version 8 or higher)
-- [MongoDB](https://www.mongodb.com/) (local installation or cloud instance)
+- [PostgreSQL](https://www.postgresql.org/) (local installation or cloud instance)
 
 ### Installation
 
@@ -142,7 +142,11 @@ Create `packages/server/.env`:
 
 ```env
 PORT=3000
-MONGODB_URI=mongodb://localhost:27017/match3
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=match3
 JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=7d
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
