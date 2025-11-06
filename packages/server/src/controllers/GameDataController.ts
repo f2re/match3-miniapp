@@ -46,7 +46,9 @@ export const GameDataController = {
           level,
           moves,
           board,
-          achievements
+          achievements,
+          gameMode: 'classic', // default game mode
+          difficulty: 'medium' // default difficulty
         });
       }
       

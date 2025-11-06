@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { ApiResponse } from '@shared/types';
 
 interface AuthenticatedRequest extends Request {
@@ -150,7 +150,7 @@ export const generateToken = (user: {
       username: user.username
     },
     jwtSecret,
-    { expiresIn: expiresIn }
+    { expiresIn } as jwt.SignOptions
   );
 };
 
