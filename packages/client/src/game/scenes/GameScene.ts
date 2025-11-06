@@ -72,11 +72,8 @@ export class GameScene extends Phaser.Scene {
       .fillCircle(0, 0, 4)
       .generateTexture('particle', 8, 8);
     
-    // Create star particle for special effects
-    this.add.graphics()
-      .fillStyle(0xffff00)
-      .fillStar(0, 0, 4, 6, 3, 0)
-      .generateTexture('star_particle', 12, 12);
+    // Create star particle for special effects using custom drawing function
+    this.createStarTexture();
   }
 
   create() {
@@ -155,6 +152,43 @@ export class GameScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
     }
+  }
+
+  private createStarTexture() {
+    const graphics = this.add.graphics();
+    graphics.fillStyle(0xffff00);
+    
+    // Draw star shape manually using path drawing
+    this.drawStar(graphics, 6, 6, 4, 6, 3);
+    
+    graphics.generateTexture('star_particle', 12, 12);
+    graphics.destroy();
+  }
+
+  private drawStar(graphics: Phaser.GameObjects.Graphics, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) {
+    let rot = Math.PI / 2 * 3;
+    let x = cx;
+    let y = cy;
+    const step = Math.PI / spikes;
+
+    graphics.beginPath();
+    graphics.moveTo(cx, cy - outerRadius);
+    
+    for (let i = 0; i < spikes; i++) {
+      x = cx + Math.cos(rot) * outerRadius;
+      y = cy + Math.sin(rot) * outerRadius;
+      graphics.lineTo(x, y);
+      rot += step;
+
+      x = cx + Math.cos(rot) * innerRadius;
+      y = cy + Math.sin(rot) * innerRadius;
+      graphics.lineTo(x, y);
+      rot += step;
+    }
+    
+    graphics.lineTo(cx, cy - outerRadius);
+    graphics.closePath();
+    graphics.fillPath();
   }
 
   private createTileTextures() {
