@@ -15,10 +15,12 @@
     "build:server": "cd packages/server && npm run build",
     "install:all": "npm install && cd packages/client && npm install && cd ../server && npm install",
     "lint": "npm run lint --workspaces",
+    "format": "prettier --write .",
     "test": "npm run test --workspaces"
   },
   "devDependencies": {
-    "concurrently": "^8.2.0"
+    "concurrently": "^8.2.0",
+    "prettier": "^3.0.3"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -32,5 +34,15 @@
     "phaser"
   ],
   "author": "Your Name",
-  "license": "MIT"
+  "license": "MIT",
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2,
+    "useTabs": false,
+    "bracketSpacing": true,
+    "arrowParens": "avoid"
+  }
 }
