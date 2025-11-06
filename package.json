@@ -1,0 +1,36 @@
+{
+  "name": "match3-miniapp",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Match-3 Telegram Mini App",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd packages/client && npm run dev",
+    "dev:server": "cd packages/server && npm run dev",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd packages/client && npm run build",
+    "build:server": "cd packages/server && npm run build",
+    "install:all": "npm install && cd packages/client && npm install && cd ../server && npm install",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "match3",
+    "telegram",
+    "miniapp",
+    "game",
+    "react",
+    "phaser"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
