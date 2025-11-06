@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import type { ApiResponse } from '../../../../shared/types';
+import type { ApiResponse } from '@shared/types';
 
 interface TelegramInitData {
   query_id?: string;

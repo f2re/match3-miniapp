@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/UserService';
 import { GameDataService } from '../services/GameDataService';
-import type { ApiResponse } from '../../../../shared/types';
+import type { ApiResponse } from '@shared/types';
 
 export class GameController {
   // Save game state

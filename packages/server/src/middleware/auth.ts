@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import type { ApiResponse } from '../../../../shared/types';
+import type { ApiResponse } from '@shared/types';
 
 interface AuthenticatedRequest extends Request {
   user?: {
