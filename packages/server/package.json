@@ -12,7 +12,9 @@
     "migrate:make": "knex migrate:make",
     "migrate:rollback": "knex migrate:rollback",
     "seed": "knex seed:run",
-    "init-db": "node scripts/init-db.js"
+    "init-db": "node scripts/init-db.js",
+    "init-env": "node scripts/init-env.js",
+    "setup": "npm run init-env && npm run init-db"
   },
   "dependencies": {
     "cors": "^2.8.5",
