@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { retrieveLaunchParams, miniApp, themeParams, viewport } from '@telegram-apps/sdk';
+import { retrieveLaunchParams, initMiniApp, initThemeParams, initViewport } from '@telegram-apps/sdk';
 import { Game } from './game/Game';
 import { GameStateProvider } from './components/GameStateProvider';
 import { LoadingScreen } from './components/LoadingScreen';
@@ -17,6 +17,13 @@ function App() {
     const initTelegram = async () => {
       try {
         const launchParams = retrieveLaunchParams();
+        
+        // Initialize and mount components
+        const [miniApp, themeParams, viewport] = await Promise.all([
+          initMiniApp(),
+          initThemeParams(),
+          initViewport()
+        ]);
         
         // Expand viewport to fullscreen
         if (viewport.mount.isAvailable()) {
