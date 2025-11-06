@@ -1,5 +1,5 @@
 import db from '../database/connection';
-import { GameData } from '../../../shared/types';
+import { GameData as SharedGameData } from '@shared/types';
 
 export interface GameDataRow {
   id: string;
@@ -7,13 +7,13 @@ export interface GameDataRow {
   score: number;
   level: number;
   moves: number;
-  board: number[][];
+  board: any; // This will be stored as JSON in the database
   achievements: string[];
   last_played: Date;
 }
 
 export const GameDataModel = {
-  async create(gameData: Omit<GameData, 'id' | 'lastPlayed'>): Promise<GameDataRow> {
+  async create(gameData: Omit<SharedGameData, 'id' | 'lastPlayed'>): Promise<GameDataRow> {
     const { userId, score, level, moves, board, achievements } = gameData;
     const result = await db.query(
       `INSERT INTO game_data (user_id, score, level, moves, board, achievements) 
@@ -32,7 +32,7 @@ export const GameDataModel = {
     return result.rows[0] || null;
   },
 
-  async updateByUserId(userId: string, gameData: Partial<GameData>): Promise<GameDataRow | null> {
+  async updateByUserId(userId: string, gameData: Partial<SharedGameData>): Promise<GameDataRow | null> {
     const fields: string[] = [];
     const values: any[] = [];
     let index = 2;

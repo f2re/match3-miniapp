@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { GameDataService } from '../services/GameDataService';
-import { GameData } from '../../../../shared/types';
+import { GameData as SharedGameData } from '@shared/types';
 
 export const GameDataController = {
   // Get game data by user ID

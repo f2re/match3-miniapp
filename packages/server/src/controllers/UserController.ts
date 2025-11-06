@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/UserService';
-import { User as UserType } from '../../../../shared/types';
+import { User as UserType } from '@shared/types';
 
 export const UserController = {
   // Get user by Telegram ID

@@ -1,6 +1,6 @@
 import { UserModel, UserRow, CreateUserData, UpdateUserData } from '../models/User';
 import { GameDataModel } from '../models/GameData';
-import type { User as UserType, GameData } from '../../../../shared/types';
+import type { User as UserType, GameData as SharedGameData } from '@shared/types';
 
 export class UserService {
   static async createUser(userData: CreateUserData): Promise<UserRow> {

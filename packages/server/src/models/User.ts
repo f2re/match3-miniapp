@@ -1,5 +1,5 @@
 import db from '../database/connection';
-import type { User as UserType, CreateUserRequest, UpdateUserRequest } from '../../../../shared/types';
+import type { User as UserType, CreateUserRequest, UpdateUserRequest } from '@shared/types';
 
 export interface UserRow {
   id: string;
