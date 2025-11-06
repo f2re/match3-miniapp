@@ -12,9 +12,11 @@
 - [Tech Stack](#-tech-stack)
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
+- [Database Setup](#-database-setup)
 - [Development](#-development)
 - [Scripts](#-scripts)
 - [Deployment](#-deployment)
+- [Testing](#-testing)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -23,51 +25,66 @@
 - 🧩 Classic Match-3 puzzle gameplay
 - 📱 Optimized for Telegram Mini App platform
 - 🎨 Responsive design for all screen sizes
-- 🔐 Secure user authentication
+- 🔐 Secure user authentication via Telegram
 - 🏆 Leaderboards and achievements
 - 🔄 Real-time game state synchronization
 - 📊 Player statistics tracking
 - 🎵 Sound effects and animations
+- 🔄 Auto PWA support for offline play
 
 ## 🏗️ Project Structure
 
 ```
+match3-miniapp/
 ├── packages/
 │   ├── client/                 # React + Vite + Phaser 3
+│   │   ├── public/
 │   │   ├── src/
 │   │   │   ├── components/     # React UI Components
 │   │   │   ├── game/          # Phaser Game Logic
-│   │   │   │   ├── scenes/    # Game Scenes
-│   │   │   │   ├── objects/   # Game Objects
-│   │   │   │   └── utils/     # Game Utilities
-│   │   │   ├── hooks/         # React Hooks
-│   │   │   ├── services/      # API Services
-│   │   │   ├── types/         # TypeScript Types
-│   │   │   └── assets/        # Game Assets
-│   │   ├── public/
+│   │   │   │   ├── scenes/    # Game Scenes (BootScene, GameScene, MenuScene)
+│   │   │   │   ├── objects/   # Game Objects (Tile, Board, etc.)
+│   │   │   │   ├── utils/     # Game Utilities (match detection, animation helpers)
+│   │   │   │   └── types/     # Game-specific TypeScript types
+│   │   │   ├── hooks/         # React Hooks (useGameState, useTelegram, etc.)
+│   │   │   ├── services/      # API Services (GameService, UserService)
+│   │   │   ├── types/         # Shared TypeScript types
+│   │   │   ├── assets/        # Game Assets (images, audio, etc.)
+│   │   │   ├── App.tsx        # Main React component
+│   │   │   └── main.tsx       # Entry point
+│   │   ├── index.html
 │   │   ├── package.json
 │   │   ├── vite.config.ts
 │   │   ├── tsconfig.json
 │   │   └── .env
 │   └── server/                # Node.js + Express + TypeScript
+│       ├── scripts/           # Build and setup scripts
 │       ├── src/
-│       │   ├── controllers/   # API Controllers
-│       │   ├── middleware/    # Express Middleware
-│       │   ├── models/        # Data Models
-│       │   ├── routes/        # API Routes
-│       │   ├── services/      # Business Logic
-│       │   ├── types/         # TypeScript Types
-│       │   └── utils/         # Utilities
+│       │   ├── controllers/   # API Controllers (UserController, GameDataController)
+│       │   ├── database/      # Database configuration
+│       │   ├── middleware/    # Express Middleware (auth, validation, error handling)
+│       │   ├── models/        # Data Models (User, GameData)
+│       │   ├── routes/        # API Routes (user routes, game routes)
+│       │   ├── services/      # Business Logic (GameService, AuthService)
+│       │   ├── types/         # Shared TypeScript types
+│       │   ├── utils/         # Utilities (validation, helpers)
+│       │   └── index.ts       # Server entry point
+│       ├── knexfile.js        # Knex.js database configuration
 │       ├── package.json
 │       ├── tsconfig.json
-│       └── .env
+│       ├── .env
+│       └── .env.example
 ├── shared/
-│   └── types/                 # Shared TypeScript Interfaces
-├── .env.example              # Environment variables template
-├── .gitignore               # Git ignore patterns
-├── package.json             # Root package configuration
-├── README.md                # Project documentation
-└── setup.sh                 # Setup script
+│   └── types/                 # Shared TypeScript Interfaces between client and server
+├── .gitignore                 # Git ignore patterns
+├── .env.example               # Environment variables template
+├── .eslintrc.json             # ESLint configuration
+├── .prettierrc                # Prettier configuration
+├── CONTRIBUTING.md            # Contribution guidelines
+├── LICENSE                    # MIT License
+├── README.md                  # Project documentation
+├── package.json              # Root package configuration with workspace setup
+└── setup.sh                  # Setup script for initial installation
 ```
 
 ## 🛠️ Tech Stack
@@ -80,6 +97,7 @@
 - [@telegram-apps/sdk](https://github.com/Telegram-Apps-Documentation/telegram-apps-sdk) - Telegram Mini App integration
 - [Zustand](https://zustand-demo.pmnd.rs/) - State management
 - [Framer Motion](https://www.framer.com/motion/) - Smooth animations
+- [Vite PWA Plugin](https://vite-plugin-pwa-org.translate.goog/) - PWA capabilities
 
 ### Backend
 - [Node.js](https://nodejs.org/) - JavaScript runtime
@@ -90,6 +108,7 @@
 - [JSON Web Tokens](https://jwt.io/) - Authentication
 - [Helmet](https://helmetjs.github.io/) - Security middleware
 - [Express Rate Limit](https://github.com/nfriedly/express-rate-limit) - Rate limiting
+- [tsconfig-paths](https://www.npmjs.com/package/tsconfig-paths) - Path aliasing
 
 ## 🚀 Getting Started
 
@@ -114,7 +133,9 @@
 
 3. Set up environment variables (see [Environment Variables](#-environment-variables))
 
-4. Start the development servers:
+4. Set up the database (see [Database Setup](#-database-setup))
+
+5. Start the development servers:
    ```bash
    npm run dev
    ```
@@ -153,6 +174,36 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 NODE_ENV=development
 ```
 
+## 🗄️ Database Setup
+
+This project uses PostgreSQL with Knex.js as a query builder. After setting up your environment variables:
+
+1. Initialize the database:
+   ```bash
+   cd packages/server
+   npm run setup
+   ```
+
+This command will:
+- Create the required environment file if it doesn't exist
+- Initialize the database connection
+- Run migrations to create the necessary tables
+
+2. To run migrations manually:
+   ```bash
+   cd packages/server && npm run migrate
+   ```
+
+3. To create a new migration:
+   ```bash
+   cd packages/server && npm run migrate:make migration_name
+   ```
+
+4. To rollback the last migration:
+   ```bash
+   cd packages/server && npm run migrate:rollback
+   ```
+
 ## 📱 Development
 
 ### Client Development
@@ -179,6 +230,14 @@ Run both client and server in development mode:
 npm run dev
 ```
 
+### Code Formatting
+
+Format the codebase with Prettier:
+
+```bash
+npm run format
+```
+
 ## 🛠️ Scripts
 
 | Script | Description |
@@ -192,6 +251,8 @@ npm run dev
 | `npm run install:all` | Install dependencies for all packages |
 | `npm run lint` | Lint all packages |
 | `npm run test` | Run tests for all packages |
+| `npm run format` | Format all files with Prettier |
+| `npm run setup` | Run server setup (init-env and init-db) |
 
 ## 🚀 Deployment
 
@@ -203,13 +264,32 @@ To create production builds:
 npm run build
 ```
 
-### Deployment Steps
+### Server Deployment
 
 1. Build the application: `npm run build`
-2. Deploy the client build to a static hosting service
-3. Deploy the server to a Node.js hosting platform
-4. Configure your domain and SSL certificates
-5. Set up environment variables on your hosting platform
+2. Deploy the server to a Node.js hosting platform (e.g., Heroku, AWS, DigitalOcean)
+3. Set up environment variables on your hosting platform
+4. Ensure PostgreSQL is accessible from your production environment
+
+### Client Deployment
+
+1. Build the application: `npm run build`
+2. Deploy the client build (from `packages/client/dist`) to a static hosting service (e.g., Vercel, Netlify, GitHub Pages)
+3. Configure your domain and SSL certificates
+
+### Docker Deployment
+
+The application can also be deployed using Docker. Create a multi-stage Dockerfile with both client and server components.
+
+## 🧪 Testing
+
+To run tests across the entire project:
+
+```bash
+npm run test
+```
+
+Each package may have its own test configuration specific to its functionality. The project uses standard testing approaches for both client and server components.
 
 ## 🤝 Contributing
 
@@ -218,11 +298,13 @@ We welcome contributions to this project! To get started:
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Commit your changes (`git commit -m 'Add amazing feature'`)
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+4. Ensure the code is formatted with `npm run format`
+5. Add or update tests as appropriate
+6. Commit your changes using conventional commits format
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
-Please make sure to update tests as appropriate.
+Please read our [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on code standards and the process we follow.
 
 ## 📄 License
 
