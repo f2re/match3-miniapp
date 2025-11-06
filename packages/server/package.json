@@ -4,9 +4,9 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "dev": "nodemon src/index.ts",
-    "start": "node dist/index.js",
-    "build": "tsc",
+    "dev": "nodemon -r tsconfig-paths/register src/index.ts",
+    "start": "node -r tsconfig-paths/register dist/index.js",
+    "build": "tsc && tsc-alias",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
     "migrate": "knex migrate:latest",
     "migrate:make": "knex migrate:make",
@@ -36,6 +36,11 @@
     "@typescript-eslint/parser": "^6.5.0",
     "nodemon": "^3.0.1",
     "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.8",
+    "tsconfig-paths": "^4.2.3",
     "typescript": "^5.2.2"
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
   }
 }
