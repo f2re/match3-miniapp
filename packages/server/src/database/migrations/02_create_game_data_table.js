@@ -6,7 +6,7 @@ exports.up = async function(knex) {
     table.integer('level').defaultTo(1);
     table.integer('moves').defaultTo(0);
     table.jsonb('board'); // Store the game board as JSON
-    table.specificType('achievements', 'text[]').defaultTo([]); // Array of achievement IDs
+    table.specificType('achievements', 'text[]').defaultTo(knex.raw('ARRAY[]::text[]')); // Array of achievement IDs
     table.timestamp('last_played').defaultTo(knex.fn.now());
   });
 };
