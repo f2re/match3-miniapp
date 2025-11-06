@@ -82,7 +82,8 @@ export function LoadingScreen() {
         </motion.p>
       </div>
       
-      <style jsx>{`
+      {/* Fixed: Use style tag without jsx attribute */}
+      <style>{`
         .loading-screen {
           position: fixed;
           top: 0;
@@ -99,6 +100,7 @@ export function LoadingScreen() {
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         }
         
         .loading-content {
@@ -122,6 +124,7 @@ export function LoadingScreen() {
         .gem {
           font-size: 28px;
           display: inline-block;
+          filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
         }
         
         .loading-title {
@@ -139,6 +142,7 @@ export function LoadingScreen() {
           -webkit-text-fill-color: transparent;
           background-clip: text;
           animation: gradient 3s ease infinite;
+          text-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
         }
         
         @keyframes gradient {
@@ -162,6 +166,7 @@ export function LoadingScreen() {
           height: 8px;
           border-radius: 50%;
           background: var(--tg-theme-button-color, #4fc3f7);
+          box-shadow: 0 0 6px var(--tg-theme-button-color, #4fc3f7);
         }
         
         .loading-text {
