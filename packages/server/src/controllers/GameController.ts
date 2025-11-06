@@ -237,7 +237,10 @@ export class GameController {
       res.json({ success: true, data: { coins: updatedUser.coins } });
     } catch (error) {
       console.error('Error adding coins:', error);
-      res.status(500).json({ success: false, error: error.message || 'Internal server error' });
+      res.status(500).json({ 
+        success: false, 
+        error: (error instanceof Error) ? error.message : 'Internal server error' 
+      });
     }
   }
 
@@ -260,7 +263,10 @@ export class GameController {
       res.json({ success: true, data: { coins: updatedUser.coins } });
     } catch (error) {
       console.error('Error spending coins:', error);
-      res.status(500).json({ success: false, error: error.message || 'Internal server error' });
+      res.status(500).json({ 
+        success: false, 
+        error: (error instanceof Error) ? error.message : 'Internal server error' 
+      });
     }
   }
 

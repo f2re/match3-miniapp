@@ -150,7 +150,7 @@ export const generateToken = (user: {
       username: user.username
     },
     jwtSecret,
-    { expiresIn }
+    { expiresIn: expiresIn }
   );
 };
 
