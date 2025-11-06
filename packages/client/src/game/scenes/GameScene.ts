@@ -13,37 +13,41 @@ import {
 /**
  * Main game scene for Match-3 gameplay
  * Handles rendering, animations, and user interactions
+ * Enhanced with smooth animations and better UX
  */
 export class GameScene extends Phaser.Scene {
   private gameLogic!: GameLogic;
   private gameState!: GameState;
   private levelConfig!: LevelConfig;
   
-  // Visual constants
+  // Visual constants - optimized for mobile
   private readonly TILE_SIZE = 64;
-  private readonly TILE_SPACING = 4;
+  private readonly TILE_SPACING = 6;
   private readonly GRID_OFFSET_X = 50;
-  private readonly GRID_OFFSET_Y = 150;
+  private readonly GRID_OFFSET_Y = 180;
   
   // Game objects
   private tileSprites: Phaser.GameObjects.Sprite[][] = [];
   private selectedTileSprite: Phaser.GameObjects.Sprite | null = null;
   private particleEmitters: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  private backgroundSprites: Phaser.GameObjects.Sprite[][] = [];
   
   // UI elements
   private scoreText!: Phaser.GameObjects.Text;
   private movesText!: Phaser.GameObjects.Text;
   private targetScoreText!: Phaser.GameObjects.Text;
+  private levelText!: Phaser.GameObjects.Text;
   private gameOverText!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
   
-  // Audio
-  private matchSound!: Phaser.Sound.BaseSound;
-  private swapSound!: Phaser.Sound.BaseSound;
-  private fallSound!: Phaser.Sound.BaseSound;
+  // Audio - with fallback system
+  private audioEnabled = false;
+  private audioContext: AudioContext | null = null;
   
   // Animation state
   private isAnimating = false;
   private comboCount = 0;
+  private totalMatches = 0;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -53,10 +57,13 @@ export class GameScene extends Phaser.Scene {
     this.levelConfig = data.levelConfig || this.getDefaultLevelConfig();
     this.gameLogic = new GameLogic(this.levelConfig);
     this.initializeGameState();
+    
+    // Initialize audio context safely
+    this.initializeAudio();
   }
 
   preload() {
-    // Create colored rectangles for tiles (minimalist design)
+    // Create enhanced tile textures with better visual design
     this.createTileTextures();
     
     // Create particle texture for effects
@@ -65,28 +72,34 @@ export class GameScene extends Phaser.Scene {
       .fillCircle(0, 0, 4)
       .generateTexture('particle', 8, 8);
     
-    // Load or create sound placeholders
-    this.createSoundPlaceholders();
+    // Create star particle for special effects
+    this.add.graphics()
+      .fillStyle(0xffff00)
+      .fillStar(0, 0, 4, 6, 3, 0)
+      .generateTexture('star_particle', 12, 12);
   }
 
   create() {
-    // Set up camera and background
-    this.cameras.main.setBackgroundColor('#2c3e50');
+    // Set up camera and animated background
+    this.createAnimatedBackground();
     
-    // Create game grid
+    // Create game grid with background tiles
     this.createGrid();
     
-    // Create UI
+    // Create enhanced UI
     this.createUI();
     
-    // Create particle systems
+    // Create enhanced particle systems
     this.createParticleEffects();
     
-    // Set up input handlers
+    // Set up input handlers with improved feedback
     this.setupInput();
     
     // Start game
     this.startNewGame();
+    
+    // Add resize listener for better mobile support
+    this.scale.on('resize', this.handleResize, this);
   }
 
   update() {
@@ -94,65 +107,146 @@ export class GameScene extends Phaser.Scene {
     if (!this.isAnimating) {
       this.checkForMatches();
     }
+    
+    // Update combo text opacity
+    if (this.comboText && this.comboText.visible) {
+      const alpha = this.comboText.alpha - 0.02;
+      if (alpha <= 0) {
+        this.comboText.setVisible(false);
+      } else {
+        this.comboText.setAlpha(alpha);
+      }
+    }
+  }
+
+  private initializeAudio() {
+    try {
+      // Create audio context for procedural sounds
+      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.audioEnabled = true;
+    } catch (error) {
+      console.warn('Audio context not available:', error);
+      this.audioEnabled = false;
+    }
+  }
+
+  private createAnimatedBackground() {
+    // Create gradient background
+    const graphics = this.add.graphics();
+    graphics.fillGradientStyle(0x2c3e50, 0x2c3e50, 0x34495e, 0x34495e, 1);
+    graphics.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
+    
+    // Add animated stars
+    for (let i = 0; i < 20; i++) {
+      const star = this.add.circle(
+        Math.random() * this.cameras.main.width,
+        Math.random() * this.cameras.main.height,
+        Math.random() * 2 + 1,
+        0xffffff,
+        Math.random() * 0.5 + 0.2
+      );
+      
+      this.tweens.add({
+        targets: star,
+        alpha: Math.random() * 0.8 + 0.2,
+        duration: Math.random() * 2000 + 1000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
   }
 
   private createTileTextures() {
     const tileColors = {
-      [TileType.RED]: 0xe74c3c,
-      [TileType.BLUE]: 0x3498db,
-      [TileType.GREEN]: 0x2ecc71,
-      [TileType.YELLOW]: 0xf1c40f,
-      [TileType.PURPLE]: 0x9b59b6,
-      [TileType.ORANGE]: 0xe67e22
+      [TileType.RED]: { main: 0xe74c3c, highlight: 0xec7063, shadow: 0xc0392b },
+      [TileType.BLUE]: { main: 0x3498db, highlight: 0x5dade2, shadow: 0x2980b9 },
+      [TileType.GREEN]: { main: 0x2ecc71, highlight: 0x58d68d, shadow: 0x27ae60 },
+      [TileType.YELLOW]: { main: 0xf1c40f, highlight: 0xf4d03f, shadow: 0xd4ac0d },
+      [TileType.PURPLE]: { main: 0x9b59b6, highlight: 0xbb8fce, shadow: 0x8e44ad },
+      [TileType.ORANGE]: { main: 0xe67e22, highlight: 0xf0b27a, shadow: 0xd68910 }
     };
 
-    Object.entries(tileColors).forEach(([type, color]) => {
+    Object.entries(tileColors).forEach(([type, colors]) => {
       const graphics = this.add.graphics();
       
-      // Main tile body
-      graphics.fillStyle(color);
-      graphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 8);
+      // Shadow
+      graphics.fillStyle(colors.shadow);
+      graphics.fillRoundedRect(4, 6, this.TILE_SIZE - 8, this.TILE_SIZE - 8, 10);
+      
+      // Main tile body with gradient effect
+      graphics.fillStyle(colors.main);
+      graphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
       
       // Highlight
-      graphics.fillStyle(Phaser.Display.Color.GetColor32(255, 255, 255, 60));
-      graphics.fillRoundedRect(4, 4, this.TILE_SIZE - 8, 16, 4);
+      graphics.fillStyle(colors.highlight, 0.7);
+      graphics.fillRoundedRect(6, 6, this.TILE_SIZE - 12, 20, 6);
+      
+      // Inner glow
+      graphics.fillStyle(0xffffff, 0.3);
+      graphics.fillRoundedRect(8, 8, this.TILE_SIZE - 16, this.TILE_SIZE - 16, 8);
       
       // Border
       graphics.lineStyle(2, 0x34495e);
-      graphics.strokeRoundedRect(1, 1, this.TILE_SIZE - 2, this.TILE_SIZE - 2, 8);
+      graphics.strokeRoundedRect(1, 1, this.TILE_SIZE - 2, this.TILE_SIZE - 2, 10);
+      
+      // Add gemstone pattern
+      graphics.fillStyle(0xffffff, 0.6);
+      const centerX = this.TILE_SIZE / 2;
+      const centerY = this.TILE_SIZE / 2;
+      graphics.fillTriangle(
+        centerX, centerY - 8,
+        centerX - 6, centerY + 4,
+        centerX + 6, centerY + 4
+      );
       
       graphics.generateTexture(`tile_${type}`, this.TILE_SIZE, this.TILE_SIZE);
       graphics.destroy();
     });
     
-    // Empty tile texture
+    // Enhanced empty tile texture
     const emptyGraphics = this.add.graphics();
-    emptyGraphics.fillStyle(0x7f8c8d, 0.3);
-    emptyGraphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 8);
+    emptyGraphics.fillStyle(0x7f8c8d, 0.2);
+    emptyGraphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
+    emptyGraphics.lineStyle(1, 0x95a5a6, 0.5);
+    emptyGraphics.strokeRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
     emptyGraphics.generateTexture('tile_empty', this.TILE_SIZE, this.TILE_SIZE);
     emptyGraphics.destroy();
-  }
-
-  private createSoundPlaceholders() {
-    // Create simple sound effects using Web Audio API
-    this.matchSound = this.sound.add('match', { volume: 0.5 });
-    this.swapSound = this.sound.add('swap', { volume: 0.3 });
-    this.fallSound = this.sound.add('fall', { volume: 0.2 });
   }
 
   private createGrid() {
     const { width, height } = this.gameLogic.getGridDimensions();
     
+    // Create background grid
     for (let y = 0; y < height; y++) {
+      this.backgroundSprites[y] = [];
       this.tileSprites[y] = [];
+      
       for (let x = 0; x < width; x++) {
         const tileX = this.GRID_OFFSET_X + x * (this.TILE_SIZE + this.TILE_SPACING);
         const tileY = this.GRID_OFFSET_Y + y * (this.TILE_SIZE + this.TILE_SPACING);
         
+        // Background tile
+        const bgSprite = this.add.sprite(tileX, tileY, 'tile_empty');
+        bgSprite.setAlpha(0.8);
+        this.backgroundSprites[y][x] = bgSprite;
+        
+        // Foreground tile
         const sprite = this.add.sprite(tileX, tileY, 'tile_empty');
-        sprite.setInteractive();
+        sprite.setInteractive({ useHandCursor: true });
         sprite.setData('gridX', x);
         sprite.setData('gridY', y);
+        
+        // Add hover effect
+        sprite.on('pointerover', () => {
+          if (!this.isAnimating && this.gameState.gameStatus === 'playing') {
+            sprite.setTint(0xdddddd);
+          }
+        });
+        
+        sprite.on('pointerout', () => {
+          sprite.clearTint();
+        });
         
         this.tileSprites[y][x] = sprite;
       }
@@ -160,26 +254,54 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createUI() {
-    // Score display
-    this.scoreText = this.add.text(20, 20, 'Score: 0', {
-      fontSize: '24px',
+    const headerY = 20;
+    const fontSize = this.cameras.main.width < 600 ? '20px' : '24px';
+    const smallFontSize = this.cameras.main.width < 600 ? '16px' : '18px';
+    
+    // Level display
+    this.levelText = this.add.text(20, headerY, `Level ${this.gameState.level}`, {
+      fontSize,
+      color: '#ffffff',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold'
+    });
+    
+    // Score display with animation
+    this.scoreText = this.add.text(20, headerY + 35, 'Score: 0', {
+      fontSize,
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif'
     });
     
     // Moves display
-    this.movesText = this.add.text(20, 50, `Moves: ${this.gameState.maxMoves}`, {
-      fontSize: '20px',
+    this.movesText = this.add.text(20, headerY + 70, `Moves: ${this.gameState.maxMoves}`, {
+      fontSize: smallFontSize,
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif'
     });
     
     // Target score display
-    this.targetScoreText = this.add.text(20, 80, `Target: ${this.gameState.targetScore}`, {
-      fontSize: '20px',
+    this.targetScoreText = this.add.text(20, headerY + 95, `Target: ${this.gameState.targetScore}`, {
+      fontSize: smallFontSize,
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif'
     });
+    
+    // Combo text (initially hidden)
+    this.comboText = this.add.text(
+      this.cameras.main.width / 2,
+      this.cameras.main.height / 2 - 100,
+      '',
+      {
+        fontSize: '32px',
+        color: '#f1c40f',
+        fontFamily: 'Arial, sans-serif',
+        fontStyle: 'bold',
+        align: 'center',
+        stroke: '#000000',
+        strokeThickness: 2
+      }
+    ).setOrigin(0.5).setVisible(false);
     
     // Game over text (initially hidden)
     this.gameOverText = this.add.text(
@@ -187,30 +309,46 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.height / 2,
       '',
       {
-        fontSize: '32px',
+        fontSize: '28px',
         color: '#ffffff',
         fontFamily: 'Arial, sans-serif',
-        align: 'center'
+        align: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        padding: { left: 20, right: 20, top: 15, bottom: 15 }
       }
     ).setOrigin(0.5).setVisible(false);
   }
 
   private createParticleEffects() {
-    // Create particle emitters for match effects
+    // Create enhanced particle emitters for match effects
     const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6, 0xe67e22];
     
     colors.forEach(color => {
       const emitter = this.add.particles(0, 0, 'particle', {
-        speed: { min: 50, max: 150 },
-        scale: { start: 0.5, end: 0 },
+        speed: { min: 80, max: 200 },
+        scale: { start: 0.8, end: 0 },
         blendMode: 'ADD',
         tint: color,
-        lifespan: 300,
-        quantity: 5
+        lifespan: 500,
+        quantity: 8,
+        gravityY: 100
       });
       emitter.stop();
       this.particleEmitters.push(emitter);
     });
+    
+    // Create special star emitter for combos
+    const starEmitter = this.add.particles(0, 0, 'star_particle', {
+      speed: { min: 50, max: 150 },
+      scale: { start: 1, end: 0 },
+      blendMode: 'ADD',
+      tint: [0xffff00, 0xff6b6b, 0x4ecdc4],
+      lifespan: 800,
+      quantity: 12,
+      gravityY: -50
+    });
+    starEmitter.stop();
+    this.particleEmitters.push(starEmitter);
   }
 
   private setupInput() {
@@ -221,6 +359,11 @@ export class GameScene extends Phaser.Scene {
       const gridY = gameObject.getData('gridY');
       
       this.handleTileClick({ x: gridX, y: gridY });
+      
+      // Haptic feedback for mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
     });
   }
 
@@ -237,25 +380,32 @@ export class GameScene extends Phaser.Scene {
   private selectTile(position: GridPosition) {
     this.gameState.selectedTile = position;
     
-    // Visual feedback
+    // Visual feedback with enhanced animation
     const sprite = this.tileSprites[position.y][position.x];
     this.selectedTileSprite = sprite;
     
-    // Highlight selected tile
+    // Highlight selected tile with pulsing glow
     this.tweens.add({
       targets: sprite,
-      scaleX: 1.1,
-      scaleY: 1.1,
-      duration: 200,
+      scaleX: 1.15,
+      scaleY: 1.15,
+      duration: 300,
       yoyo: true,
-      repeat: -1
+      repeat: -1,
+      ease: 'Sine.easeInOut'
     });
+    
+    // Add glow effect
+    sprite.setTint(0xffffff);
+    
+    this.playSound('select');
   }
 
   private deselectTile() {
     if (this.selectedTileSprite) {
       this.tweens.killTweensOf(this.selectedTileSprite);
       this.selectedTileSprite.setScale(1);
+      this.selectedTileSprite.clearTint();
       this.selectedTileSprite = null;
     }
     this.gameState.selectedTile = null;
@@ -269,9 +419,10 @@ export class GameScene extends Phaser.Scene {
     
     // Check if swap would create matches
     if (!this.gameLogic.wouldCreateMatches(this.gameState.grid, pos1, pos2)) {
-      // Invalid move - animate back
+      // Invalid move - animate back with better feedback
       await this.animateInvalidSwap(pos1, pos2);
       this.deselectTile();
+      this.playSound('invalid');
       return;
     }
     
@@ -284,14 +435,14 @@ export class GameScene extends Phaser.Scene {
     this.gameState.moves--;
     this.comboCount = 0;
     
-    // Animate swap
+    // Animate swap with improved easing
     await this.animateSwap(pos1, pos2);
     
     // Update moves display
     this.updateUI();
     
     // Play sound
-    this.swapSound.play();
+    this.playSound('swap');
     
     // Check for matches and cascades
     this.isAnimating = false;
@@ -308,8 +459,14 @@ export class GameScene extends Phaser.Scene {
       const score = this.gameLogic.calculateScore(matches, this.comboCount);
       this.gameState.score += score;
       this.comboCount++;
+      this.totalMatches += matches.length;
       
-      // Animate matches
+      // Show combo text for multiple matches
+      if (this.comboCount > 1) {
+        this.showComboText(this.comboCount, score);
+      }
+      
+      // Animate matches with enhanced effects
       await this.animateMatches(matches);
       
       // Remove matched tiles
@@ -324,19 +481,88 @@ export class GameScene extends Phaser.Scene {
         await this.animateFalling(animations);
       }
       
-      // Update UI
+      // Update UI with score animation
       this.updateUI();
+      this.animateScoreIncrease(score);
+      
+      this.playSound('match');
       
       this.isAnimating = false;
       
       // Check for more matches (cascade)
-      setTimeout(() => this.checkForMatches(), 100);
+      setTimeout(() => this.checkForMatches(), 150);
     } else {
       // No more matches, reset combo and check game state
       this.comboCount = 0;
       this.checkGameState();
     }
   }
+
+  private showComboText(combo: number, score: number) {
+    const texts = [
+      '', // 0
+      '', // 1
+      'NICE!', // 2
+      'GREAT!', // 3
+      'AMAZING!', // 4
+      'FANTASTIC!', // 5
+      'INCREDIBLE!' // 6+
+    ];
+    
+    const text = texts[Math.min(combo, texts.length - 1)] || 'LEGENDARY!';
+    
+    this.comboText.setText(`${text}\n+${score}`);
+    this.comboText.setVisible(true);
+    this.comboText.setAlpha(1);
+    this.comboText.setY(this.cameras.main.height / 2 - 100);
+    
+    // Animate combo text
+    this.tweens.add({
+      targets: this.comboText,
+      y: this.cameras.main.height / 2 - 150,
+      scaleX: 1.3,
+      scaleY: 1.3,
+      duration: 800,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  private animateScoreIncrease(scoreIncrease: number) {
+    // Create floating score text
+    const floatingScore = this.add.text(
+      this.scoreText.x + this.scoreText.width + 10,
+      this.scoreText.y,
+      `+${scoreIncrease}`,
+      {
+        fontSize: '18px',
+        color: '#2ecc71',
+        fontFamily: 'Arial, sans-serif',
+        fontStyle: 'bold'
+      }
+    );
+    
+    this.tweens.add({
+      targets: floatingScore,
+      y: floatingScore.y - 30,
+      alpha: 0,
+      duration: 1000,
+      ease: 'Power2',
+      onComplete: () => floatingScore.destroy()
+    });
+    
+    // Pulse score text
+    this.tweens.add({
+      targets: this.scoreText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: 200,
+      yoyo: true,
+      ease: 'Back.easeOut'
+    });
+  }
+
+  // ... (continue with the rest of the methods)
+  // Note: I'll continue with the remaining methods in the next part due to length
 
   private async animateSwap(pos1: GridPosition, pos2: GridPosition): Promise<void> {
     return new Promise(resolve => {
@@ -368,8 +594,8 @@ export class GameScene extends Phaser.Scene {
         targets: sprite1,
         x: targetX1,
         y: targetY1,
-        duration: 200,
-        ease: 'Power2',
+        duration: 250,
+        ease: 'Back.easeOut',
         onComplete
       });
       
@@ -377,8 +603,8 @@ export class GameScene extends Phaser.Scene {
         targets: sprite2,
         x: targetX2,
         y: targetY2,
-        duration: 200,
-        ease: 'Power2',
+        duration: 250,
+        ease: 'Back.easeOut',
         onComplete
       });
     });
@@ -394,12 +620,22 @@ export class GameScene extends Phaser.Scene {
       const targetX2 = this.GRID_OFFSET_X + pos1.x * (this.TILE_SIZE + this.TILE_SPACING);
       const targetY2 = this.GRID_OFFSET_Y + pos1.y * (this.TILE_SIZE + this.TILE_SPACING);
       
-      // Move towards each other, then back
+      // Shake effect for invalid move
+      this.tweens.add({
+        targets: [sprite1, sprite2],
+        x: '+=5',
+        duration: 50,
+        yoyo: true,
+        repeat: 3,
+        ease: 'Power2'
+      });
+      
+      // Move towards each other, then back with bounce
       this.tweens.add({
         targets: sprite1,
         x: targetX1,
         y: targetY1,
-        duration: 100,
+        duration: 150,
         ease: 'Power2',
         yoyo: true,
         repeat: 1
@@ -409,7 +645,7 @@ export class GameScene extends Phaser.Scene {
         targets: sprite2,
         x: targetX2,
         y: targetY2,
-        duration: 100,
+        duration: 150,
         ease: 'Power2',
         yoyo: true,
         repeat: 1,
@@ -424,34 +660,38 @@ export class GameScene extends Phaser.Scene {
       const totalAnimations = matches.reduce((sum, match) => sum + match.tiles.length, 0);
       
       matches.forEach(match => {
-        match.tiles.forEach(pos => {
+        match.tiles.forEach((pos, index) => {
           const sprite = this.tileSprites[pos.y][pos.x];
           
-          // Particle effect
-          const emitter = this.particleEmitters[Math.floor(Math.random() * this.particleEmitters.length)];
+          // Enhanced particle effect
+          const emitterIndex = this.comboCount > 3 ? 
+            this.particleEmitters.length - 1 : // Use star emitter for high combos
+            Math.floor(Math.random() * (this.particleEmitters.length - 1));
+          const emitter = this.particleEmitters[emitterIndex];
           emitter.setPosition(sprite.x, sprite.y);
           emitter.explode();
           
-          // Scale down and fade out
-          this.tweens.add({
-            targets: sprite,
-            scaleX: 0,
-            scaleY: 0,
-            alpha: 0,
-            duration: 300,
-            ease: 'Back.easeIn',
-            onComplete: () => {
-              completedAnimations++;
-              if (completedAnimations === totalAnimations) {
-                resolve();
+          // Staggered animation for better visual effect
+          setTimeout(() => {
+            // Scale down and fade out with rotation
+            this.tweens.add({
+              targets: sprite,
+              scaleX: 0,
+              scaleY: 0,
+              alpha: 0,
+              rotation: Math.PI * 2,
+              duration: 400,
+              ease: 'Back.easeIn',
+              onComplete: () => {
+                completedAnimations++;
+                if (completedAnimations === totalAnimations) {
+                  resolve();
+                }
               }
-            }
-          });
+            });
+          }, index * 50);
         });
       });
-      
-      // Play match sound
-      this.matchSound.play();
     });
   }
 
@@ -464,7 +704,7 @@ export class GameScene extends Phaser.Scene {
       
       let completedAnimations = 0;
       
-      animations.forEach(animation => {
+      animations.forEach((animation, index) => {
         const { tile, toX, toY, duration } = animation;
         const sprite = this.tileSprites[tile.y][tile.x];
         
@@ -473,34 +713,42 @@ export class GameScene extends Phaser.Scene {
         sprite.setAlpha(1);
         sprite.setScale(1);
         
-        // Animate to final position
+        // Animate to final position with bounce
         const targetX = this.GRID_OFFSET_X + toX * (this.TILE_SIZE + this.TILE_SPACING);
         const targetY = this.GRID_OFFSET_Y + toY * (this.TILE_SIZE + this.TILE_SPACING);
         
-        this.tweens.add({
-          targets: sprite,
-          x: targetX,
-          y: targetY,
-          duration: Math.min(duration, 500),
-          ease: 'Bounce.easeOut',
-          onComplete: () => {
-            tile.falling = false;
-            completedAnimations++;
-            if (completedAnimations === animations.length) {
-              resolve();
+        setTimeout(() => {
+          this.tweens.add({
+            targets: sprite,
+            x: targetX,
+            y: targetY,
+            duration: Math.min(duration * 0.8, 600),
+            ease: 'Bounce.easeOut',
+            onComplete: () => {
+              tile.falling = false;
+              completedAnimations++;
+              if (completedAnimations === animations.length) {
+                resolve();
+              }
             }
-          }
-        });
+          });
+        }, index * 30);
       });
-      
-      // Play fall sound
-      this.fallSound.play();
     });
   }
 
   private updateUI() {
     this.scoreText.setText(`Score: ${this.gameState.score}`);
     this.movesText.setText(`Moves: ${this.gameState.moves}`);
+    
+    // Update moves text color based on remaining moves
+    if (this.gameState.moves <= 5) {
+      this.movesText.setColor('#e74c3c');
+    } else if (this.gameState.moves <= 10) {
+      this.movesText.setColor('#f39c12');
+    } else {
+      this.movesText.setColor('#ffffff');
+    }
     
     // Update sprites to match game state
     for (let y = 0; y < this.gameState.grid.length; y++) {
@@ -509,9 +757,9 @@ export class GameScene extends Phaser.Scene {
         const sprite = this.tileSprites[y][x];
         
         if (tile.type === TileType.EMPTY) {
-          sprite.setTexture('tile_empty');
+          sprite.setTexture('tile_empty').setAlpha(0.5);
         } else {
-          sprite.setTexture(`tile_${tile.type}`);
+          sprite.setTexture(`tile_${tile.type}`).setAlpha(1);
         }
       }
     }
@@ -543,18 +791,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showLevelComplete() {
-    this.gameOverText.setText('Level Complete!\nTap to continue')
+    this.playSound('victory');
+    
+    // Celebration particle effect
+    this.particleEmitters.forEach(emitter => {
+      emitter.setPosition(
+        this.cameras.main.width / 2,
+        this.cameras.main.height / 2
+      );
+      emitter.explode();
+    });
+    
+    this.gameOverText.setText(`🎉 Level Complete! 🎉\n\nScore: ${this.gameState.score}\nTarget: ${this.gameState.targetScore}\n\nTap to continue`)
       .setVisible(true)
-      .setInteractive()
+      .setInteractive({ useHandCursor: true })
       .once('pointerdown', () => {
         this.scene.restart({ levelConfig: this.getNextLevelConfig() });
       });
   }
 
   private showGameOver() {
-    this.gameOverText.setText(`Game Over\nFinal Score: ${this.gameState.score}\nTap to restart`)
+    this.playSound('gameOver');
+    
+    const message = this.gameState.score >= this.gameState.targetScore / 2 ?
+      `💯 Good Try! 💯\n\nFinal Score: ${this.gameState.score}\nTarget: ${this.gameState.targetScore}\nMatches: ${this.totalMatches}\n\nTap to try again` :
+      `🎮 Game Over 🎮\n\nFinal Score: ${this.gameState.score}\nTarget: ${this.gameState.targetScore}\nMatches: ${this.totalMatches}\n\nTap to restart`;
+    
+    this.gameOverText.setText(message)
       .setVisible(true)
-      .setInteractive()
+      .setInteractive({ useHandCursor: true })
       .once('pointerdown', () => {
         this.scene.restart({ levelConfig: this.levelConfig });
       });
@@ -562,7 +827,82 @@ export class GameScene extends Phaser.Scene {
 
   private startNewGame() {
     this.gameState.grid = this.gameLogic.initializeGrid();
+    this.totalMatches = 0;
     this.updateUI();
+  }
+
+  private handleResize() {
+    // Responsive layout adjustments
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+    
+    // Adjust UI positions for different screen sizes
+    if (width < 600) {
+      this.scoreText.setFontSize('18px');
+      this.movesText.setFontSize('14px');
+      this.targetScoreText.setFontSize('14px');
+    }
+  }
+
+  private playSound(type: string) {
+    if (!this.audioEnabled || !this.audioContext) return;
+    
+    try {
+      // Create procedural sounds using Web Audio API
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+      
+      let frequency = 440;
+      let duration = 0.1;
+      
+      switch (type) {
+        case 'select':
+          frequency = 800;
+          duration = 0.1;
+          break;
+        case 'swap':
+          frequency = 600;
+          duration = 0.2;
+          break;
+        case 'match':
+          frequency = 1000;
+          duration = 0.3;
+          break;
+        case 'invalid':
+          frequency = 200;
+          duration = 0.15;
+          break;
+        case 'victory':
+          frequency = 1200;
+          duration = 0.5;
+          break;
+        case 'gameOver':
+          frequency = 150;
+          duration = 0.4;
+          break;
+      }
+      
+      oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+      gainNode.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+      
+      oscillator.start(this.audioContext.currentTime);
+      oscillator.stop(this.audioContext.currentTime + duration);
+    } catch (error) {
+      console.warn('Sound playback failed:', error);
+    }
+  }
+
+  public activateAudio() {
+    if (this.audioContext && this.audioContext.state === 'suspended') {
+      this.audioContext.resume().then(() => {
+        this.audioEnabled = true;
+        this.playSound('select'); // Test sound
+      });
+    }
   }
 
   private initializeGameState() {
@@ -583,7 +923,7 @@ export class GameScene extends Phaser.Scene {
     return {
       level: 1,
       targetScore: 1000,
-      maxMoves: 20,
+      maxMoves: 25,
       gridWidth: 8,
       gridHeight: 8,
       tileTypes: [TileType.RED, TileType.BLUE, TileType.GREEN, TileType.YELLOW, TileType.PURPLE]
@@ -595,7 +935,7 @@ export class GameScene extends Phaser.Scene {
     return {
       ...this.levelConfig,
       level: nextLevel,
-      targetScore: this.levelConfig.targetScore + 500,
+      targetScore: Math.floor(this.levelConfig.targetScore * 1.3),
       maxMoves: Math.max(15, this.levelConfig.maxMoves - 1),
       tileTypes: nextLevel > 3 ? 
         [TileType.RED, TileType.BLUE, TileType.GREEN, TileType.YELLOW, TileType.PURPLE, TileType.ORANGE] :
