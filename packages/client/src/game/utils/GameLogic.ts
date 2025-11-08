@@ -6,19 +6,20 @@ import {
   GameState,
   LevelConfig,
   TileAnimation,
-  ScoreConfig
+  ScoreConfig,
+  SpecialTileEffect
 } from '../../types/game';
 
 /**
  * Core Match-3 game logic class
- * Handles grid management, match detection, tile falling, and scoring
+ * Handles grid management, match detection, tile falling, scoring, and special tiles
  */
 export class GameLogic {
   private readonly GRID_WIDTH: number;
   private readonly GRID_HEIGHT: number;
   private readonly MIN_MATCH_LENGTH = 3;
   private readonly TILE_TYPES: TileType[];
-  
+
   private scoreConfig: ScoreConfig = {
     basePoints: {
       [TileType.RED]: 10,
@@ -30,19 +31,31 @@ export class GameLogic {
     },
     matchMultipliers: {
       3: 1,
-      4: 2,
-      5: 4,
-      6: 8,
-      7: 16
+      4: 2.5,    // Increased for bomb creation
+      5: 5,      // Increased for rocket creation
+      6: 10,     // Massive bonus
+      7: 20      // Legendary bonus
     },
     comboMultiplier: 1.5,
     levelBonus: 100
   };
 
+  // Special tile bonuses
+  private readonly SPECIAL_BONUSES = {
+    bomb: 200,
+    rocket: 300,
+    rainbow: 500
+  };
+
   constructor(config: LevelConfig) {
     this.GRID_WIDTH = config.gridWidth;
     this.GRID_HEIGHT = config.gridHeight;
-    this.TILE_TYPES = config.tileTypes.filter(type => type !== TileType.EMPTY);
+    this.TILE_TYPES = config.tileTypes.filter(
+      type => type !== TileType.EMPTY &&
+      !type.startsWith('bomb') &&
+      !type.startsWith('rocket') &&
+      !type.startsWith('rainbow')
+    );
   }
 
   /**
@@ -331,20 +344,215 @@ export class GameLogic {
   }
 
   /**
-   * Calculate score for matches
+   * Calculate score for matches with enhanced bonuses
    */
-  public calculateScore(matches: MatchResult[], comboCount: number = 0): number {
+  public calculateScore(matches: MatchResult[], comboCount: number = 0, specialActivations: number = 0): number {
     let totalScore = 0;
-    
+
     matches.forEach(match => {
       const basePoints = this.scoreConfig.basePoints[match.type] || 10;
       const multiplier = this.scoreConfig.matchMultipliers[match.length] || 1;
       const comboBonus = Math.pow(this.scoreConfig.comboMultiplier, comboCount);
-      
-      totalScore += Math.floor(basePoints * match.length * multiplier * comboBonus);
+
+      // Calculate base match score
+      let matchScore = Math.floor(basePoints * match.length * multiplier * comboBonus);
+
+      // Add bonus for special tile creation
+      if (match.special) {
+        const specialBonus = this.SPECIAL_BONUSES[match.special] || 0;
+        matchScore += specialBonus;
+      }
+
+      totalScore += matchScore;
     });
-    
+
+    // Add bonus for special tile activations
+    if (specialActivations > 0) {
+      totalScore += specialActivations * 150;
+    }
+
     return totalScore;
+  }
+
+  /**
+   * Detect match type and create special tile if applicable
+   * Returns the position where special tile should be created
+   */
+  public detectSpecialTileCreation(match: MatchResult): { position: GridPosition; special: SpecialTileEffect } | null {
+    const { tiles, length, direction } = match;
+
+    // 5+ match = Rocket
+    if (length >= 5) {
+      const centerPos = tiles[Math.floor(tiles.length / 2)];
+      return {
+        position: centerPos,
+        special: direction === 'horizontal' ? SpecialTileEffect.ROCKET_H : SpecialTileEffect.ROCKET_V
+      };
+    }
+
+    // 4 match = Bomb
+    if (length === 4) {
+      const centerPos = tiles[Math.floor(tiles.length / 2)];
+      return {
+        position: centerPos,
+        special: SpecialTileEffect.BOMB
+      };
+    }
+
+    // L or T shape = Rainbow (check if this match intersects with another)
+    // This is detected separately in findLShapedMatches
+
+    return null;
+  }
+
+  /**
+   * Create a special tile at the specified position
+   */
+  public createSpecialTile(grid: GameTile[][], position: GridPosition, special: SpecialTileEffect, tileType: TileType): GameTile[][] {
+    const newGrid = this.cloneGrid(grid);
+
+    if (!this.isValidPosition(position)) {
+      return newGrid;
+    }
+
+    const tile: GameTile = {
+      type: tileType,
+      x: position.x,
+      y: position.y,
+      id: `special_${position.x}_${position.y}_${Date.now()}`,
+      special: special,
+      falling: false,
+      matched: false
+    };
+
+    newGrid[position.y][position.x] = tile;
+    return newGrid;
+  }
+
+  /**
+   * Activate a special tile and get affected positions
+   */
+  public activateSpecialTile(grid: GameTile[][], position: GridPosition): GridPosition[] {
+    const tile = grid[position.y]?.[position.x];
+    if (!tile || !tile.special) {
+      return [];
+    }
+
+    const affectedPositions: GridPosition[] = [];
+
+    switch (tile.special) {
+      case SpecialTileEffect.BOMB:
+        // 3x3 area around the bomb
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            const pos = { x: position.x + dx, y: position.y + dy };
+            if (this.isValidPosition(pos)) {
+              affectedPositions.push(pos);
+            }
+          }
+        }
+        break;
+
+      case SpecialTileEffect.ROCKET_H:
+        // Entire row
+        for (let x = 0; x < this.GRID_WIDTH; x++) {
+          affectedPositions.push({ x, y: position.y });
+        }
+        break;
+
+      case SpecialTileEffect.ROCKET_V:
+        // Entire column
+        for (let y = 0; y < this.GRID_HEIGHT; y++) {
+          affectedPositions.push({ x: position.x, y });
+        }
+        break;
+
+      case SpecialTileEffect.RAINBOW:
+        // All tiles of the same type as the tile it was swapped with
+        // This needs to be handled differently - we'll mark all matching colors
+        // For now, just return the position itself
+        affectedPositions.push(position);
+        break;
+    }
+
+    return affectedPositions;
+  }
+
+  /**
+   * Remove tiles at specified positions (for special tile effects)
+   */
+  public removeTilesAtPositions(grid: GameTile[][], positions: GridPosition[]): GameTile[][] {
+    const newGrid = this.cloneGrid(grid);
+
+    positions.forEach(pos => {
+      if (this.isValidPosition(pos)) {
+        newGrid[pos.y][pos.x] = {
+          type: TileType.EMPTY,
+          x: pos.x,
+          y: pos.y,
+          id: `empty_${pos.x}_${pos.y}_${Date.now()}`,
+          falling: false,
+          matched: true
+        };
+      }
+    });
+
+    return newGrid;
+  }
+
+  /**
+   * Shuffle all tile colors on the board (for color swap feature)
+   * Preserves positions and special tile properties
+   */
+  public shuffleTileColors(grid: GameTile[][]): { grid: GameTile[][], colorMap: Map<string, TileType> } {
+    const newGrid = this.cloneGrid(grid);
+    const colorMap = new Map<string, TileType>();
+
+    // Collect all non-empty, non-special tiles
+    const regularTiles: { pos: GridPosition; oldType: TileType }[] = [];
+
+    for (let y = 0; y < this.GRID_HEIGHT; y++) {
+      for (let x = 0; x < this.GRID_WIDTH; x++) {
+        const tile = newGrid[y][x];
+        if (tile.type !== TileType.EMPTY && !tile.special) {
+          regularTiles.push({ pos: { x, y }, oldType: tile.type });
+          colorMap.set(`${x},${y}`, tile.type);
+        }
+      }
+    }
+
+    // Create a shuffled array of colors
+    const colors = regularTiles.map(t => t.oldType);
+    this.shuffleArray(colors);
+
+    // Assign new colors
+    regularTiles.forEach((tileInfo, index) => {
+      const { pos } = tileInfo;
+      newGrid[pos.y][pos.x].type = colors[index];
+    });
+
+    // Make sure there are no immediate matches
+    this.removeInitialMatches(newGrid);
+
+    return { grid: newGrid, colorMap };
+  }
+
+  /**
+   * Fisher-Yates shuffle algorithm
+   */
+  private shuffleArray<T>(array: T[]): T[] {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  /**
+   * Check if a tile is special
+   */
+  public isSpecialTile(tile: GameTile): boolean {
+    return !!tile.special && tile.special !== SpecialTileEffect.NONE;
   }
 
   /**
