@@ -103,6 +103,14 @@ export interface GameStats {
   achievements: Achievement[];
 }
 
+// Score configuration
+export interface ScoreConfig {
+  basePoints: Record<TileType, number>;
+  matchMultipliers: Record<number, number>;
+  comboMultiplier: number;
+  levelBonus: number;
+}
+
 // Achievement system
 export interface Achievement {
   id: string;
