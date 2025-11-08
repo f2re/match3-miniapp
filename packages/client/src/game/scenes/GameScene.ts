@@ -113,11 +113,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   update() {
-    // Update animations and check for cascading matches
-    if (!this.isAnimating) {
-      this.checkForMatches();
-    }
-    
     // Update combo text opacity
     if (this.comboText && this.comboText.visible) {
       const alpha = this.comboText.alpha - 0.02;
@@ -587,18 +582,49 @@ export class GameScene extends Phaser.Scene {
         sprite.setInteractive({ useHandCursor: true });
         sprite.setData('gridX', x);
         sprite.setData('gridY', y);
-        
-        // Add hover effect
+
+        // Add smooth hover effect with reflection
         sprite.on('pointerover', () => {
           if (!this.isAnimating && this.gameState.gameStatus === 'playing') {
-            sprite.setTint(0xdddddd);
+            // Smooth scale up and add brightness
+            this.tweens.add({
+              targets: sprite,
+              scaleX: 1.08,
+              scaleY: 1.08,
+              duration: 150,
+              ease: 'Power2'
+            });
+            sprite.setTint(0xffffff);
           }
         });
-        
+
         sprite.on('pointerout', () => {
+          // Smooth scale back down
+          this.tweens.add({
+            targets: sprite,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 150,
+            ease: 'Power2'
+          });
           sprite.clearTint();
         });
-        
+
+        // Add click effect
+        sprite.on('pointerdown', () => {
+          if (!this.isAnimating && this.gameState.gameStatus === 'playing') {
+            // Quick press animation
+            this.tweens.add({
+              targets: sprite,
+              scaleX: 0.95,
+              scaleY: 0.95,
+              duration: 80,
+              ease: 'Power2',
+              yoyo: true
+            });
+          }
+        });
+
         this.tileSprites[y][x] = sprite;
       }
     }
@@ -1010,7 +1036,8 @@ export class GameScene extends Phaser.Scene {
 
     // Check for matches and cascades
     this.isAnimating = false;
-    this.checkForMatches();
+    // Use setTimeout to allow browser to render the swap
+    setTimeout(() => this.checkForMatches(), 50);
   }
 
   private async handleSpecialTileSwap(
@@ -1034,6 +1061,8 @@ export class GameScene extends Phaser.Scene {
     if (specialTile.special === SpecialTileEffect.RAINBOW) {
       // Rainbow clears all tiles of the other tile's color
       affectedPositions = this.getAllTilesOfType(otherTile.type);
+      // Add the rainbow tile itself
+      affectedPositions.push(specialPos);
     } else {
       affectedPositions = this.gameLogic.activateSpecialTile(this.gameState.grid, specialPos);
     }
@@ -1041,7 +1070,14 @@ export class GameScene extends Phaser.Scene {
     this.specialActivations++;
 
     // Animate special effect
-    await this.animateSpecialTileEffect(specialPos, specialTile.special, affectedPositions);
+    if (specialTile.special) {
+      await this.animateSpecialTileEffect(specialPos, specialTile.special, affectedPositions);
+    }
+
+    // Clean up overlays for affected tiles before removing them
+    affectedPositions.forEach(pos => {
+      this.destroyTileOverlay(pos);
+    });
 
     // Remove affected tiles
     this.gameState.grid = this.gameLogic.removeTilesAtPositions(this.gameState.grid, affectedPositions);
@@ -1058,7 +1094,8 @@ export class GameScene extends Phaser.Scene {
     this.playSound('match');
 
     this.isAnimating = false;
-    this.checkForMatches();
+    // Use setTimeout to prevent stack overflow and give browser time to render
+    setTimeout(() => this.checkForMatches(), 50);
   }
 
   private getAllTilesOfType(tileType: TileType): GridPosition[] {
@@ -1212,6 +1249,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   private async checkForMatches() {
+    // Prevent multiple simultaneous calls
+    if (this.isAnimating) return;
+
     const matches = this.gameLogic.findAllMatches(this.gameState.grid);
 
     if (matches.length > 0) {
@@ -1317,8 +1357,13 @@ export class GameScene extends Phaser.Scene {
       this.isAnimating = false;
       this.specialActivations = 0; // Reset after scoring
 
-      // Check for more matches (cascade)
-      setTimeout(() => this.checkForMatches(), 150);
+      // Check for more matches (cascade) with a small delay
+      // Use setTimeout to prevent stack overflow and allow browser to render
+      setTimeout(() => {
+        if (!this.isAnimating) {
+          this.checkForMatches();
+        }
+      }, 100);
     } else {
       // No more matches, reset combo and check game state
       this.comboCount = 0;
@@ -1396,12 +1441,16 @@ export class GameScene extends Phaser.Scene {
     return new Promise(resolve => {
       const sprite1 = this.tileSprites[pos1.y][pos1.x];
       const sprite2 = this.tileSprites[pos2.y][pos2.x];
-      
+
+      // Get overlays if they exist
+      const overlay1 = sprite1.getData('overlay');
+      const overlay2 = sprite2.getData('overlay');
+
       const targetX1 = this.GRID_OFFSET_X + pos2.x * (this.TILE_SIZE + this.TILE_SPACING);
       const targetY1 = this.GRID_OFFSET_Y + pos2.y * (this.TILE_SIZE + this.TILE_SPACING);
       const targetX2 = this.GRID_OFFSET_X + pos1.x * (this.TILE_SIZE + this.TILE_SPACING);
       const targetY2 = this.GRID_OFFSET_Y + pos1.y * (this.TILE_SIZE + this.TILE_SPACING);
-      
+
       let completedTweens = 0;
       const onComplete = () => {
         completedTweens++;
@@ -1409,15 +1458,16 @@ export class GameScene extends Phaser.Scene {
           // Swap sprites in array
           this.tileSprites[pos1.y][pos1.x] = sprite2;
           this.tileSprites[pos2.y][pos2.x] = sprite1;
-          
+
           // Update sprite data
           sprite1.setData('gridX', pos2.x).setData('gridY', pos2.y);
           sprite2.setData('gridX', pos1.x).setData('gridY', pos1.y);
-          
+
           resolve();
         }
       };
-      
+
+      // Animate sprite1 and its overlay
       this.tweens.add({
         targets: sprite1,
         x: targetX1,
@@ -1426,7 +1476,18 @@ export class GameScene extends Phaser.Scene {
         ease: 'Back.easeOut',
         onComplete
       });
-      
+
+      if (overlay1) {
+        this.tweens.add({
+          targets: overlay1,
+          x: targetX1,
+          y: targetY1,
+          duration: 250,
+          ease: 'Back.easeOut'
+        });
+      }
+
+      // Animate sprite2 and its overlay
       this.tweens.add({
         targets: sprite2,
         x: targetX2,
@@ -1435,6 +1496,16 @@ export class GameScene extends Phaser.Scene {
         ease: 'Back.easeOut',
         onComplete
       });
+
+      if (overlay2) {
+        this.tweens.add({
+          targets: overlay2,
+          x: targetX2,
+          y: targetY2,
+          duration: 250,
+          ease: 'Back.easeOut'
+        });
+      }
     });
   }
 
@@ -1486,19 +1557,22 @@ export class GameScene extends Phaser.Scene {
     return new Promise(resolve => {
       let completedAnimations = 0;
       const totalAnimations = matches.reduce((sum, match) => sum + match.tiles.length, 0);
-      
+
       matches.forEach(match => {
         match.tiles.forEach((pos, index) => {
           const sprite = this.tileSprites[pos.y][pos.x];
-          
+
+          // Clean up overlay before animating destruction
+          this.destroyTileOverlay(pos);
+
           // Enhanced particle effect
-          const emitterIndex = this.comboCount > 3 ? 
+          const emitterIndex = this.comboCount > 3 ?
             this.particleEmitters.length - 1 : // Use star emitter for high combos
             Math.floor(Math.random() * (this.particleEmitters.length - 1));
           const emitter = this.particleEmitters[emitterIndex];
           emitter.setPosition(sprite.x, sprite.y);
           emitter.explode();
-          
+
           // Staggered animation for better visual effect
           setTimeout(() => {
             // Scale down and fade out with rotation
@@ -1529,22 +1603,26 @@ export class GameScene extends Phaser.Scene {
         resolve();
         return;
       }
-      
+
       let completedAnimations = 0;
-      
+
       animations.forEach((animation, index) => {
         const { tile, toX, toY, duration } = animation;
         const sprite = this.tileSprites[tile.y][tile.x];
-        
+
+        // Get overlay before cleaning up
+        const overlay = sprite.getData('overlay');
+
         // Update sprite texture
         sprite.setTexture(`tile_${tile.type}`);
         sprite.setAlpha(1);
         sprite.setScale(1);
-        
+        sprite.setRotation(0);
+
         // Animate to final position with bounce
         const targetX = this.GRID_OFFSET_X + toX * (this.TILE_SIZE + this.TILE_SPACING);
         const targetY = this.GRID_OFFSET_Y + toY * (this.TILE_SIZE + this.TILE_SPACING);
-        
+
         setTimeout(() => {
           this.tweens.add({
             targets: sprite,
@@ -1560,6 +1638,17 @@ export class GameScene extends Phaser.Scene {
               }
             }
           });
+
+          // Animate overlay if it exists
+          if (overlay) {
+            this.tweens.add({
+              targets: overlay,
+              x: targetX,
+              y: targetY,
+              duration: Math.min(duration * 0.8, 600),
+              ease: 'Bounce.easeOut'
+            });
+          }
         }, index * 30);
       });
     });
@@ -1586,16 +1675,37 @@ export class GameScene extends Phaser.Scene {
         const sprite = this.tileSprites[y][x];
 
         if (tile.type === TileType.EMPTY) {
+          // Clean up overlay if tile is now empty
+          this.destroyTileOverlay({ x, y });
           sprite.setTexture('tile_empty').setAlpha(0.5);
         } else {
           sprite.setTexture(`tile_${tile.type}`).setAlpha(1);
 
-          // Add special tile overlay if applicable
-          if (tile.special) {
+          // Add special tile overlay if applicable (only if not already present)
+          const hasOverlay = sprite.getData('overlay') !== null && sprite.getData('overlay') !== undefined;
+          if (tile.special && !hasOverlay) {
             this.addSpecialTileOverlay(sprite, tile.special);
+          } else if (!tile.special && hasOverlay) {
+            // Remove overlay if tile is no longer special
+            this.destroyTileOverlay({ x, y });
           }
         }
       }
+    }
+  }
+
+  private destroyTileOverlay(position: GridPosition) {
+    if (!this.isValidPosition(position)) return;
+
+    const sprite = this.tileSprites[position.y][position.x];
+    if (!sprite) return;
+
+    const existingOverlay = sprite.getData('overlay');
+    if (existingOverlay) {
+      // Kill all tweens on the overlay before destroying
+      this.tweens.killTweensOf(existingOverlay);
+      existingOverlay.destroy();
+      sprite.setData('overlay', null);
     }
   }
 
@@ -1603,7 +1713,9 @@ export class GameScene extends Phaser.Scene {
     // Remove any existing overlay
     const existingOverlay = sprite.getData('overlay');
     if (existingOverlay) {
+      this.tweens.killTweensOf(existingOverlay);
       existingOverlay.destroy();
+      sprite.setData('overlay', null);
     }
 
     let overlayTexture = '';
@@ -1635,6 +1747,11 @@ export class GameScene extends Phaser.Scene {
         ease: 'Sine.easeInOut'
       });
     }
+  }
+
+  private isValidPosition(pos: GridPosition): boolean {
+    const { width, height } = this.gameLogic.getGridDimensions();
+    return pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height;
   }
 
   private async triggerColorSwap(): Promise<void> {
