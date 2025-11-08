@@ -128,30 +128,109 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createAnimatedBackground() {
-    // Create gradient background
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    // Create beautiful multi-layer gradient background
     const graphics = this.add.graphics();
-    graphics.fillGradientStyle(0x2c3e50, 0x2c3e50, 0x34495e, 0x34495e, 1);
-    graphics.fillRect(0, 0, this.cameras.main.width, this.cameras.main.height);
-    
-    // Add animated stars
-    for (let i = 0; i < 20; i++) {
-      const star = this.add.circle(
-        Math.random() * this.cameras.main.width,
-        Math.random() * this.cameras.main.height,
-        Math.random() * 2 + 1,
-        0xffffff,
-        Math.random() * 0.5 + 0.2
+
+    // Base gradient (purple to blue)
+    graphics.fillGradientStyle(
+      0x1a1a2e, // Top left - deep navy
+      0x16213e, // Top right - dark blue
+      0x0f3460, // Bottom left - ocean blue
+      0x533483, // Bottom right - purple
+      1
+    );
+    graphics.fillRect(0, 0, width, height);
+
+    // Add subtle overlay pattern
+    graphics.fillStyle(0x000000, 0.1);
+    for (let x = 0; x < width; x += 40) {
+      for (let y = 0; y < height; y += 40) {
+        if ((x + y) % 80 === 0) {
+          graphics.fillCircle(x, y, 1);
+        }
+      }
+    }
+
+    // Create floating orbs for depth
+    for (let i = 0; i < 8; i++) {
+      const orb = this.add.circle(
+        Math.random() * width,
+        Math.random() * height,
+        Math.random() * 40 + 20,
+        0x4a90e2,
+        0.05
       );
-      
+
       this.tweens.add({
-        targets: star,
-        alpha: Math.random() * 0.8 + 0.2,
-        duration: Math.random() * 2000 + 1000,
+        targets: orb,
+        x: Math.random() * width,
+        y: Math.random() * height,
+        alpha: Math.random() * 0.1 + 0.02,
+        duration: Math.random() * 8000 + 6000,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut'
       });
     }
+
+    // Add sparkling stars with varied sizes
+    for (let i = 0; i < 30; i++) {
+      const starSize = Math.random() * 3 + 1;
+      const star = this.add.circle(
+        Math.random() * width,
+        Math.random() * height,
+        starSize,
+        0xffffff,
+        Math.random() * 0.6 + 0.3
+      );
+
+      // Twinkle animation
+      this.tweens.add({
+        targets: star,
+        alpha: Math.random() * 0.3,
+        scale: Math.random() * 0.5 + 0.7,
+        duration: Math.random() * 2500 + 1500,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+        delay: Math.random() * 2000
+      });
+    }
+
+    // Add shooting stars occasionally
+    this.time.addEvent({
+      delay: 3000,
+      callback: () => this.createShootingStar(),
+      loop: true
+    });
+  }
+
+  private createShootingStar() {
+    const width = this.cameras.main.width;
+    const height = this.cameras.main.height;
+
+    const startX = Math.random() * width;
+    const startY = Math.random() * height * 0.3;
+
+    const star = this.add.circle(startX, startY, 2, 0xffffff, 0.9);
+    const trail = this.add.rectangle(startX - 20, startY, 40, 2, 0xffffff, 0.5);
+    trail.setOrigin(1, 0.5);
+
+    this.tweens.add({
+      targets: [star, trail],
+      x: '+=200',
+      y: '+=150',
+      alpha: 0,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => {
+        star.destroy();
+        trail.destroy();
+      }
+    });
   }
 
   private createStarTexture() {
@@ -192,58 +271,166 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createTileTextures() {
+    // Beautiful gem colors with sophisticated palettes
     const tileColors = {
-      [TileType.RED]: { main: 0xe74c3c, highlight: 0xec7063, shadow: 0xc0392b },
-      [TileType.BLUE]: { main: 0x3498db, highlight: 0x5dade2, shadow: 0x2980b9 },
-      [TileType.GREEN]: { main: 0x2ecc71, highlight: 0x58d68d, shadow: 0x27ae60 },
-      [TileType.YELLOW]: { main: 0xf1c40f, highlight: 0xf4d03f, shadow: 0xd4ac0d },
-      [TileType.PURPLE]: { main: 0x9b59b6, highlight: 0xbb8fce, shadow: 0x8e44ad },
-      [TileType.ORANGE]: { main: 0xe67e22, highlight: 0xf0b27a, shadow: 0xd68910 }
+      [TileType.RED]: {
+        main: 0xff3838,
+        mid: 0xff6b6b,
+        highlight: 0xff9999,
+        shadow: 0xc62828,
+        dark: 0x8b0000,
+        accent: 0xffcccc
+      },
+      [TileType.BLUE]: {
+        main: 0x1e88e5,
+        mid: 0x42a5f5,
+        highlight: 0x90caf9,
+        shadow: 0x0d47a1,
+        dark: 0x002171,
+        accent: 0xe3f2fd
+      },
+      [TileType.GREEN]: {
+        main: 0x43a047,
+        mid: 0x66bb6a,
+        highlight: 0xa5d6a7,
+        shadow: 0x2e7d32,
+        dark: 0x1b5e20,
+        accent: 0xe8f5e9
+      },
+      [TileType.YELLOW]: {
+        main: 0xfdd835,
+        mid: 0xffeb3b,
+        highlight: 0xfff59d,
+        shadow: 0xf9a825,
+        dark: 0xf57f17,
+        accent: 0xfffde7
+      },
+      [TileType.PURPLE]: {
+        main: 0x8e24aa,
+        mid: 0xab47bc,
+        highlight: 0xce93d8,
+        shadow: 0x6a1b9a,
+        dark: 0x4a148c,
+        accent: 0xf3e5f5
+      },
+      [TileType.ORANGE]: {
+        main: 0xfb8c00,
+        mid: 0xff9800,
+        highlight: 0xffcc80,
+        shadow: 0xe65100,
+        dark: 0xbf360c,
+        accent: 0xfff3e0
+      }
     };
 
     Object.entries(tileColors).forEach(([type, colors]) => {
       const graphics = this.add.graphics();
-      
-      // Shadow
-      graphics.fillStyle(colors.shadow);
-      graphics.fillRoundedRect(4, 6, this.TILE_SIZE - 8, this.TILE_SIZE - 8, 10);
-      
-      // Main tile body with gradient effect
-      graphics.fillStyle(colors.main);
-      graphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
-      
-      // Highlight
-      graphics.fillStyle(colors.highlight, 0.7);
-      graphics.fillRoundedRect(6, 6, this.TILE_SIZE - 12, 20, 6);
-      
-      // Inner glow
-      graphics.fillStyle(0xffffff, 0.3);
-      graphics.fillRoundedRect(8, 8, this.TILE_SIZE - 16, this.TILE_SIZE - 16, 8);
-      
-      // Border
-      graphics.lineStyle(2, 0x34495e);
-      graphics.strokeRoundedRect(1, 1, this.TILE_SIZE - 2, this.TILE_SIZE - 2, 10);
-      
-      // Add gemstone pattern
-      graphics.fillStyle(0xffffff, 0.6);
       const centerX = this.TILE_SIZE / 2;
       const centerY = this.TILE_SIZE / 2;
-      graphics.fillTriangle(
-        centerX, centerY - 8,
-        centerX - 6, centerY + 4,
-        centerX + 6, centerY + 4
-      );
-      
+
+      // Deep shadow for depth
+      graphics.fillStyle(0x000000, 0.4);
+      graphics.fillCircle(centerX + 3, centerY + 5, 26);
+
+      // Outer dark border for 3D effect
+      graphics.fillStyle(colors.dark);
+      graphics.fillCircle(centerX, centerY, 28);
+
+      // Shadow layer
+      graphics.fillStyle(colors.shadow);
+      graphics.fillCircle(centerX, centerY, 26);
+
+      // Main gem body with gradient simulation (multiple circles)
+      for (let i = 0; i < 5; i++) {
+        const radius = 26 - i * 2;
+        const alpha = 1 - i * 0.1;
+        const color = i === 0 ? colors.main : (i < 3 ? colors.mid : colors.highlight);
+        graphics.fillStyle(color, alpha);
+        graphics.fillCircle(centerX, centerY, radius);
+      }
+
+      // Create faceted gem appearance
+      // Top facet (highlight)
+      graphics.fillStyle(colors.accent, 0.9);
+      graphics.beginPath();
+      graphics.moveTo(centerX, centerY - 18);
+      graphics.lineTo(centerX - 10, centerY - 8);
+      graphics.lineTo(centerX + 10, centerY - 8);
+      graphics.closePath();
+      graphics.fillPath();
+
+      // Side facets (mid-tone)
+      graphics.fillStyle(colors.mid, 0.8);
+      graphics.beginPath();
+      graphics.moveTo(centerX - 10, centerY - 8);
+      graphics.lineTo(centerX - 16, centerY + 6);
+      graphics.lineTo(centerX, centerY + 2);
+      graphics.closePath();
+      graphics.fillPath();
+
+      graphics.fillStyle(colors.highlight, 0.7);
+      graphics.beginPath();
+      graphics.moveTo(centerX + 10, centerY - 8);
+      graphics.lineTo(centerX + 16, centerY + 6);
+      graphics.lineTo(centerX, centerY + 2);
+      graphics.closePath();
+      graphics.fillPath();
+
+      // Bottom facets (darker)
+      graphics.fillStyle(colors.shadow, 0.6);
+      graphics.beginPath();
+      graphics.moveTo(centerX, centerY + 2);
+      graphics.lineTo(centerX - 16, centerY + 6);
+      graphics.lineTo(centerX, centerY + 18);
+      graphics.closePath();
+      graphics.fillPath();
+
+      graphics.beginPath();
+      graphics.moveTo(centerX, centerY + 2);
+      graphics.lineTo(centerX + 16, centerY + 6);
+      graphics.lineTo(centerX, centerY + 18);
+      graphics.closePath();
+      graphics.fillPath();
+
+      // Intense highlight for sparkle effect
+      graphics.fillStyle(0xffffff, 0.9);
+      graphics.fillCircle(centerX - 8, centerY - 10, 4);
+      graphics.fillStyle(0xffffff, 0.7);
+      graphics.fillCircle(centerX - 6, centerY - 8, 2);
+
+      // Secondary sparkle
+      graphics.fillStyle(0xffffff, 0.5);
+      graphics.fillCircle(centerX + 6, centerY - 4, 3);
+
+      // Glossy reflection arc
+      graphics.fillStyle(0xffffff, 0.3);
+      graphics.fillCircle(centerX - 5, centerY - 5, 8);
+
+      // Subtle outer glow
+      graphics.lineStyle(2, colors.highlight, 0.6);
+      graphics.strokeCircle(centerX, centerY, 26);
+
+      // Inner shine ring
+      graphics.lineStyle(1, 0xffffff, 0.4);
+      graphics.strokeCircle(centerX, centerY, 20);
+
       graphics.generateTexture(`tile_${type}`, this.TILE_SIZE, this.TILE_SIZE);
       graphics.destroy();
     });
-    
-    // Enhanced empty tile texture
+
+    // Beautiful empty tile texture with subtle gradient
     const emptyGraphics = this.add.graphics();
-    emptyGraphics.fillStyle(0x7f8c8d, 0.2);
-    emptyGraphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
-    emptyGraphics.lineStyle(1, 0x95a5a6, 0.5);
-    emptyGraphics.strokeRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 10);
+    emptyGraphics.fillStyle(0x34495e, 0.3);
+    emptyGraphics.fillRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 12);
+
+    // Inner gradient effect
+    emptyGraphics.fillStyle(0x2c3e50, 0.2);
+    emptyGraphics.fillRoundedRect(6, 6, this.TILE_SIZE - 12, this.TILE_SIZE - 12, 10);
+
+    // Subtle border
+    emptyGraphics.lineStyle(1, 0x7f8c8d, 0.4);
+    emptyGraphics.strokeRoundedRect(2, 2, this.TILE_SIZE - 4, this.TILE_SIZE - 4, 12);
+
     emptyGraphics.generateTexture('tile_empty', this.TILE_SIZE, this.TILE_SIZE);
     emptyGraphics.destroy();
   }
@@ -288,101 +475,218 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createUI() {
-    const headerY = 20;
-    const fontSize = this.cameras.main.width < 600 ? '20px' : '24px';
+    const headerY = 25;
+    const fontSize = this.cameras.main.width < 600 ? '22px' : '26px';
     const smallFontSize = this.cameras.main.width < 600 ? '16px' : '18px';
-    
-    // Level display
-    this.levelText = this.add.text(20, headerY, `Level ${this.gameState.level}`, {
+    const width = this.cameras.main.width;
+
+    // Create glass-morphism panel for stats
+    const panelWidth = 200;
+    const panelHeight = 140;
+    const panel = this.add.graphics();
+
+    // Panel background with blur effect simulation
+    panel.fillStyle(0x1a1a2e, 0.7);
+    panel.fillRoundedRect(10, 10, panelWidth, panelHeight, 15);
+
+    // Inner glow
+    panel.lineStyle(2, 0x4a90e2, 0.5);
+    panel.strokeRoundedRect(10, 10, panelWidth, panelHeight, 15);
+
+    // Highlight edge
+    panel.lineStyle(1, 0xffffff, 0.2);
+    panel.strokeRoundedRect(11, 11, panelWidth - 2, panelHeight - 2, 14);
+
+    // Level display with icon
+    const levelIcon = this.add.circle(30, headerY + 5, 8, 0xffd700, 1);
+    this.tweens.add({
+      targets: levelIcon,
+      scale: 1.2,
+      duration: 1000,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    this.levelText = this.add.text(45, headerY, `Level ${this.gameState.level}`, {
       fontSize,
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif',
-      fontStyle: 'bold'
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3
     });
-    
-    // Score display with animation
-    this.scoreText = this.add.text(20, headerY + 35, 'Score: 0', {
+
+    // Score display with gradient effect
+    const scoreIcon = this.add.star(30, headerY + 40, 5, 6, 10, 0x4ecdc4);
+    this.tweens.add({
+      targets: scoreIcon,
+      rotation: Math.PI * 2,
+      duration: 3000,
+      repeat: -1,
+      ease: 'Linear'
+    });
+
+    this.scoreText = this.add.text(45, headerY + 35, 'Score: 0', {
       fontSize,
-      color: '#ffffff',
-      fontFamily: 'Arial, sans-serif'
+      color: '#4ecdc4',
+      fontFamily: 'Arial, sans-serif',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3
     });
-    
-    // Moves display
-    this.movesText = this.add.text(20, headerY + 70, `Moves: ${this.gameState.maxMoves}`, {
+
+    // Moves display with icon
+    const movesIcon = this.add.circle(30, headerY + 75, 8, 0xff6b6b, 1);
+    this.movesText = this.add.text(45, headerY + 70, `Moves: ${this.gameState.maxMoves}`, {
       fontSize: smallFontSize,
       color: '#ffffff',
-      fontFamily: 'Arial, sans-serif'
+      fontFamily: 'Arial, sans-serif',
+      stroke: '#000000',
+      strokeThickness: 2
     });
-    
-    // Target score display
-    this.targetScoreText = this.add.text(20, headerY + 95, `Target: ${this.gameState.targetScore}`, {
+
+    // Target score display with icon
+    const targetIcon = this.add.star(30, headerY + 105, 5, 4, 8, 0xf1c40f);
+    this.targetScoreText = this.add.text(45, headerY + 100, `Target: ${this.gameState.targetScore}`, {
       fontSize: smallFontSize,
-      color: '#ffffff',
-      fontFamily: 'Arial, sans-serif'
+      color: '#f1c40f',
+      fontFamily: 'Arial, sans-serif',
+      stroke: '#000000',
+      strokeThickness: 2
     });
-    
-    // Combo text (initially hidden)
+
+    // Enhanced combo text with multiple effects
     this.comboText = this.add.text(
-      this.cameras.main.width / 2,
+      width / 2,
       this.cameras.main.height / 2 - 100,
       '',
       {
-        fontSize: '32px',
-        color: '#f1c40f',
+        fontSize: '42px',
+        color: '#ffffff',
         fontFamily: 'Arial, sans-serif',
         fontStyle: 'bold',
         align: 'center',
-        stroke: '#000000',
-        strokeThickness: 2
+        stroke: '#ff6b6b',
+        strokeThickness: 6,
+        shadow: {
+          offsetX: 0,
+          offsetY: 0,
+          color: '#ffd700',
+          blur: 10,
+          fill: true
+        }
       }
     ).setOrigin(0.5).setVisible(false);
-    
-    // Game over text (initially hidden)
+
+    // Beautiful game over panel
+    const gameOverPanel = this.add.graphics();
+    gameOverPanel.fillStyle(0x1a1a2e, 0.95);
+    gameOverPanel.fillRoundedRect(
+      width / 2 - 150,
+      this.cameras.main.height / 2 - 100,
+      300,
+      200,
+      20
+    );
+    gameOverPanel.lineStyle(3, 0x4a90e2, 0.8);
+    gameOverPanel.strokeRoundedRect(
+      width / 2 - 150,
+      this.cameras.main.height / 2 - 100,
+      300,
+      200,
+      20
+    );
+    gameOverPanel.setVisible(false);
+
     this.gameOverText = this.add.text(
-      this.cameras.main.width / 2,
+      width / 2,
       this.cameras.main.height / 2,
       '',
       {
-        fontSize: '28px',
+        fontSize: '24px',
         color: '#ffffff',
         fontFamily: 'Arial, sans-serif',
+        fontStyle: 'bold',
         align: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        padding: { left: 20, right: 20, top: 15, bottom: 15 }
+        lineSpacing: 8,
+        stroke: '#000000',
+        strokeThickness: 3
       }
     ).setOrigin(0.5).setVisible(false);
   }
 
   private createParticleEffects() {
-    // Create enhanced particle emitters for match effects
-    const colors = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf1c40f, 0x9b59b6, 0xe67e22];
-    
-    colors.forEach(color => {
+    // Create beautiful enhanced particle emitters for match effects
+    const colors = [
+      { color: 0xff3838, glow: 0xff6b6b }, // Red
+      { color: 0x1e88e5, glow: 0x42a5f5 }, // Blue
+      { color: 0x43a047, glow: 0x66bb6a }, // Green
+      { color: 0xfdd835, glow: 0xffeb3b }, // Yellow
+      { color: 0x8e24aa, glow: 0xab47bc }, // Purple
+      { color: 0xfb8c00, glow: 0xff9800 }  // Orange
+    ];
+
+    colors.forEach(({ color, glow }) => {
+      // Main particle emitter
       const emitter = this.add.particles(0, 0, 'particle', {
-        speed: { min: 80, max: 200 },
-        scale: { start: 0.8, end: 0 },
+        speed: { min: 100, max: 250 },
+        scale: { start: 1.2, end: 0 },
         blendMode: 'ADD',
-        tint: color,
-        lifespan: 500,
-        quantity: 8,
-        gravityY: 100
+        tint: [color, glow],
+        lifespan: 600,
+        quantity: 12,
+        gravityY: 150,
+        angle: { min: -110, max: -70 },
+        rotate: { min: 0, max: 360 },
+        alpha: { start: 1, end: 0 }
       });
       emitter.stop();
       this.particleEmitters.push(emitter);
+
+      // Secondary glow emitter for extra flair
+      const glowEmitter = this.add.particles(0, 0, 'particle', {
+        speed: { min: 50, max: 120 },
+        scale: { start: 0.8, end: 0.2 },
+        blendMode: 'ADD',
+        tint: glow,
+        lifespan: 800,
+        quantity: 8,
+        gravityY: 80,
+        alpha: { start: 0.8, end: 0 }
+      });
+      glowEmitter.stop();
+      this.particleEmitters.push(glowEmitter);
     });
-    
-    // Create special star emitter for combos
+
+    // Create special star emitter for combos with rainbow effect
     const starEmitter = this.add.particles(0, 0, 'star_particle', {
-      speed: { min: 50, max: 150 },
-      scale: { start: 1, end: 0 },
+      speed: { min: 80, max: 200 },
+      scale: { start: 1.5, end: 0 },
       blendMode: 'ADD',
-      tint: [0xffff00, 0xff6b6b, 0x4ecdc4],
-      lifespan: 800,
-      quantity: 12,
-      gravityY: -50
+      tint: [0xffff00, 0xff6b6b, 0x4ecdc4, 0x9b59b6, 0x2ecc71],
+      lifespan: 1000,
+      quantity: 20,
+      gravityY: -30,
+      angle: { min: 0, max: 360 },
+      rotate: { min: 0, max: 360 },
+      alpha: { start: 1, end: 0 }
     });
     starEmitter.stop();
     this.particleEmitters.push(starEmitter);
+
+    // Sparkle emitter for tile selection and hover
+    const sparkleEmitter = this.add.particles(0, 0, 'particle', {
+      speed: { min: 20, max: 50 },
+      scale: { start: 0.4, end: 0 },
+      blendMode: 'ADD',
+      tint: 0xffffff,
+      lifespan: 400,
+      quantity: 5,
+      alpha: { start: 0.8, end: 0 }
+    });
+    sparkleEmitter.stop();
+    this.particleEmitters.push(sparkleEmitter);
   }
 
   private setupInput() {

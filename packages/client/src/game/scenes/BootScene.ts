@@ -6,58 +6,175 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Create loading bar
     const width = this.cameras.main.width;
     const height = this.cameras.main.height;
 
-    const progressBar = this.add.graphics();
+    // Create stunning gradient background
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(
+      0x1a1a2e,
+      0x16213e,
+      0x0f3460,
+      0x533483,
+      1, 1, 1, 1
+    );
+    bg.fillRect(0, 0, width, height);
+
+    // Add animated orbs
+    for (let i = 0; i < 8; i++) {
+      const orb = this.add.circle(
+        Math.random() * width,
+        Math.random() * height,
+        Math.random() * 50 + 25,
+        0x4a90e2,
+        0.05
+      );
+
+      this.tweens.add({
+        targets: orb,
+        x: Math.random() * width,
+        y: Math.random() * height,
+        alpha: Math.random() * 0.1 + 0.02,
+        duration: Math.random() * 6000 + 4000,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut'
+      });
+    }
+
+    // Game title with glow
+    const title = this.add.text(width / 2, height * 0.25, 'MATCH-3', {
+      fontSize: '56px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#4a90e2',
+      strokeThickness: 5,
+      shadow: {
+        offsetX: 0,
+        offsetY: 0,
+        color: '#00d4ff',
+        blur: 25,
+        fill: true
+      }
+    }).setOrigin(0.5);
+
+    // Pulse animation for title
+    this.tweens.add({
+      targets: title,
+      scale: 1.05,
+      duration: 1500,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Loading text
+    const loadingText = this.add.text(width / 2, height / 2 - 60, 'Loading...', {
+      fontSize: '22px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#4ecdc4',
+      stroke: '#000000',
+      strokeThickness: 2
+    }).setOrigin(0.5);
+
+    // Animated loading dots
+    this.tweens.add({
+      targets: loadingText,
+      alpha: 0.5,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut'
+    });
+
+    // Progress box with glass-morphism
     const progressBox = this.add.graphics();
-    progressBox.fillStyle(0x222222, 0.8);
-    progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
+    progressBox.fillStyle(0x1a1a2e, 0.6);
+    progressBox.fillRoundedRect(width / 2 - 165, height / 2 - 20, 330, 40, 20);
+    progressBox.lineStyle(2, 0x4a90e2, 0.8);
+    progressBox.strokeRoundedRect(width / 2 - 165, height / 2 - 20, 330, 40, 20);
+    progressBox.lineStyle(1, 0xffffff, 0.3);
+    progressBox.strokeRoundedRect(width / 2 - 163, height / 2 - 18, 326, 36, 18);
 
-    const loadingText = this.make.text({
-      x: width / 2,
-      y: height / 2 - 50,
-      text: 'Loading...',
-      style: {
-        font: '20px Arial',
-        color: '#ffffff'
-      }
+    // Progress bar
+    const progressBar = this.add.graphics();
+
+    // Percentage text
+    const percentText = this.add.text(width / 2, height / 2, '0%', {
+      fontSize: '20px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3
+    }).setOrigin(0.5);
+
+    // Loading spinner
+    const spinner = this.add.star(width / 2, height / 2 + 70, 8, 10, 20, 0x4ecdc4);
+    this.tweens.add({
+      targets: spinner,
+      rotation: Math.PI * 2,
+      duration: 1500,
+      repeat: -1,
+      ease: 'Linear'
     });
-    loadingText.setOrigin(0.5, 0.5);
 
-    const percentText = this.make.text({
-      x: width / 2,
-      y: height / 2,
-      text: '0%',
-      style: {
-        font: '18px Arial',
-        color: '#ffffff'
-      }
-    });
-    percentText.setOrigin(0.5, 0.5);
-
-    // Loading events
+    // Loading events with beautiful animation
     this.load.on('progress', (value: number) => {
-      percentText.setText(Math.floor(value * 100) + '%');
+      const percentage = Math.floor(value * 100);
+      percentText.setText(percentage + '%');
+
       progressBar.clear();
-      progressBar.fillStyle(0x00d4aa, 1);
-      progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+
+      // Gradient progress bar
+      const barWidth = 320 * value;
+
+      // Shadow
+      progressBar.fillStyle(0x000000, 0.2);
+      progressBar.fillRoundedRect(width / 2 - 157, height / 2 - 13, barWidth, 26, 15);
+
+      // Main gradient bar
+      progressBar.fillStyle(0x1e88e5, 1);
+      progressBar.fillRoundedRect(width / 2 - 160, height / 2 - 15, barWidth, 30, 15);
+
+      // Highlight gradient
+      progressBar.fillStyle(0x42a5f5, 0.8);
+      progressBar.fillRoundedRect(width / 2 - 158, height / 2 - 13, barWidth - 4, 12, 13);
+
+      // Glow effect
+      progressBar.lineStyle(2, 0x00d4ff, 0.6);
+      progressBar.strokeRoundedRect(width / 2 - 160, height / 2 - 15, barWidth, 30, 15);
+
+      // Pulse animation on progress
+      this.tweens.add({
+        targets: percentText,
+        scale: 1.1,
+        duration: 100,
+        yoyo: true,
+        ease: 'Back.easeOut'
+      });
     });
 
     this.load.on('complete', () => {
-      progressBar.destroy();
-      progressBox.destroy();
-      loadingText.destroy();
-      percentText.destroy();
+      // Fade out animation
+      this.tweens.add({
+        targets: [progressBar, progressBox, loadingText, percentText, spinner, title],
+        alpha: 0,
+        duration: 500,
+        onComplete: () => {
+          progressBar.destroy();
+          progressBox.destroy();
+          loadingText.destroy();
+          percentText.destroy();
+          spinner.destroy();
+          title.destroy();
+        }
+      });
     });
 
-    // Generate tile textures programmatically for minimal design
+    // Generate beautiful tile textures
     this.generateTileTextures();
-    
-    // Load any other assets here
-    // this.load.audio('pop', ['assets/sounds/pop.mp3']);
-    // this.load.audio('match', ['assets/sounds/match.mp3']);
   }
 
   private generateTileTextures(): void {
